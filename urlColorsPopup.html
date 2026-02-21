@@ -89,10 +89,13 @@
       <h3> Url Keyword Options </h3>
       <div class="note">
         Note: Each set of keyword options is on a new line with the format for each being: <br>
-         <strong>keyword, color, [flash], [timer], [border width], [opacity] </strong><br>
+         <strong>keyword, color, [flash], [timer], [border width], [opacity], [group name] </strong><br>
          Where keyword and color are required. <br><br> Note, you may use the wildcard character within the keyword (<strong>*</strong>)! <br><br>
         If you type in 'flash' as the third word, then the box will blink at the interval set by the optional parameter 'timer'.
-        You can also specify custom border width and opacity values that will override the default values above.<br>
+        You can also specify custom border width and opacity values that will override the default values above.
+        If [group name] is specified, matching tabs in the same browser window will be grouped using this rule's color.
+        For tab groups, Chrome supports these standard colors: <strong>grey, blue, red, yellow, green, pink, purple, cyan, orange</strong>.<br>
+        You can also use shorthand: <strong>keyword, color, group name</strong>.<br>
       </div>
 
       <div>
@@ -101,7 +104,8 @@
           placeholder=
 "google.com, blue
 facebook.com, green, flash, 4
-www.*.mywildcard.com, pink"
+www.*.mywildcard.com, pink
+*.sandbox.my.salesforce.com, orange, , , , , YBS Dev"
         ></textarea>
       </div>
     </div>

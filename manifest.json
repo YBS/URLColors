@@ -8,7 +8,8 @@
   "permissions": [
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "tabGroups"
   ],
   "background": {
     "service_worker": "urlColorsServiceWorker.js"

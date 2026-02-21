@@ -6,6 +6,35 @@ const logMessageIfEnabled = (...args) => {
     });
 }
 
+const buildKeywordRegex = (keyword) => {
+  const wildcardRegex = keyword
+    .split('*')
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*');
+  return new RegExp(wildcardRegex, 'i');
+}
+
+const parsePreferenceLine = (line, defaults) => {
+  const parts = line.split(',').map((s) => s.trim());
+  const keyword = parts[0];
+  const color = parts[1];
+  if (!keyword || !color) {
+    return null;
+  }
+  const thirdValue = parts[2];
+  const isFlashValue = thirdValue && thirdValue.toLowerCase() === 'flash';
+  const shorthandGroupName = parts.length === 3 && thirdValue && !isFlashValue ? thirdValue : '';
+  return {
+    keyword,
+    color,
+    flash: isFlashValue ? thirdValue : '',
+    timer: isFlashValue ? parts[3] : '',
+    borderWidth: parts[4] || defaults?.borderWidth,
+    opacity: parts[5] || defaults?.opacity,
+    groupName: parts[6] || shorthandGroupName || '',
+  };
+}
+
 
 const removePreviousDivs = () => {
   const divs = document.getElementsByClassName('colordiv');
@@ -71,13 +100,15 @@ const getMatchedPrefs = (prefs) => {
     if (!line) {
       return;
     }
-    // Parse the line for keyword and settings
-    const [keyword, color, flash, timer, borderWidth = prefs?.borderWidth, opacity = prefs?.opacity] = line.split(',').map(s => s.trim());
-    const regex = new RegExp(keyword.replace(/\*/g, '.*'), 'i'); // Convert wildcard to regex pattern
+    const parsedLine = parsePreferenceLine(line, prefs);
+    if (!parsedLine) {
+      return;
+    }
+    const regex = buildKeywordRegex(parsedLine.keyword);
 
     // If the current URL matches the keyword pattern
     if (regex.test(currentUrl)) {
-      matchedPrefs.push({keyword, color, flash, timer, borderWidth, opacity});
+      matchedPrefs.push(parsedLine);
     }
   });
   return matchedPrefs;
@@ -85,20 +116,12 @@ const getMatchedPrefs = (prefs) => {
 
 
 const updatePageWithPrefs = (matchedPrefs, defaultBorderWidth, defaultOpacity) => {
-  // Get the current tab URL
-  const currentUrl = window.location.href;
-
   // Iterate through each line of preferences
   matchedPrefs.forEach(pref => {
-    // Parse the line for keyword and settings
     const { keyword, color, flash, timer, borderWidth = defaultBorderWidth, opacity = defaultOpacity } = pref;
-    const regex = new RegExp(keyword.replace(/\*/g, '.*'), 'i'); // Convert wildcard to regex pattern
-
-    // If the current URL matches the keyword pattern
-    if (regex.test(currentUrl)) {
-      removePreviousDivs();
-      addNewDivs(color, flash, timer, borderWidth, opacity);
-    }
+    logMessageIfEnabled(`URLColors: applying matched keyword '${keyword}'`);
+    removePreviousDivs();
+    addNewDivs(color, flash, timer, borderWidth, opacity);
   });
 }
 
