@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const borderWidthInput = document.getElementById('border-width');
   const activeCheckbox = document.getElementById('active-checkbox');
   const loggingCheckbox = document.getElementById('logging-checkbox');
+  const titlePrefixCheckbox = document.getElementById('title-prefix-checkbox');
   const snoozeButton = document.getElementById('snooze');
   const cancelButton = document.getElementById('cancel');
   const snoozeDurationInput = document.getElementById('snooze-duration');
@@ -76,13 +77,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load and display stored preferences including snooze time
-  chrome.storage.local.get(['prefs', 'snoozeUntil', 'snoozeTime', 'active', 'bannerDismissed', 'logging'], (data) => {
+  chrome.storage.local.get(['prefs', 'snoozeUntil', 'snoozeTime', 'active', 'bannerDismissed', 'logging', 'titlePrefixEnabled'], (data) => {
     // Load preferences
     keywordsInput.value = data?.prefs?.keywords || '';
     opacityInput.value = data?.prefs?.opacity || DEFAULT_OPACITY; // Default opacity
     borderWidthInput.value = data?.prefs?.borderWidth || DEFAULT_BORDER_WIDTH; // Default border width
     activeCheckbox.checked = data?.active === undefined ? true: data.active; // Enabled by default
     loggingCheckbox.checked = data?.logging === undefined ? false: data.logging; // Enabled by default
+    titlePrefixCheckbox.checked = data?.titlePrefixEnabled === undefined ? true : data.titlePrefixEnabled; // Enabled by default
     snoozeDurationInput.value = data?.snoozeTime || DEFAULT_SNOOZE_TIME;
     resetSnoozeUIIfExpired(data?.snoozeUntil);
     if (data?.bannerDismissed === undefined) {
@@ -101,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
       active: activeCheckbox.checked,
       snoozeTime: parseFloat(snoozeDurationInput.value) || DEFAULT_SNOOZE_TIME,
       logging: loggingCheckbox.checked,// Save snooze time, defaulting to 5 if not specified
+      titlePrefixEnabled: titlePrefixCheckbox.checked,
     }, () => { console.log('Preferences saved.'); });
   }
 
@@ -110,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   borderWidthInput.addEventListener('input', savePreferences);
   activeCheckbox.addEventListener('change', savePreferences);
   loggingCheckbox.addEventListener('change', savePreferences);
+  titlePrefixCheckbox.addEventListener('change', savePreferences);
   snoozeDurationInput.addEventListener('input', savePreferences);
 
   // Snooze functionality

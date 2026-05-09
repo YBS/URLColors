@@ -433,7 +433,7 @@ chrome.tabs.onUpdated.addListener(
     }
 );
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if ((changes.prefs || changes.snoozeUntil || changes.active) && namespace === 'local') {
+  if ((changes.prefs || changes.snoozeUntil || changes.active || changes.titlePrefixEnabled) && namespace === 'local') {
     if (changes.snoozeUntil && changes.snoozeUntil.newValue) {
       handleSnooze(changes.snoozeUntil.newValue);
     }

@@ -35,6 +35,97 @@ const parsePreferenceLine = (line, defaults) => {
   };
 }
 
+const titleState = {
+  currentGroupName: '',
+  isUpdating: false,
+  pendingGroupName: '',
+  settleTimer: null,
+  maxWaitTimer: null,
+  observer: null,
+};
+
+const TITLE_SETTLE_DELAY_MS = 600;
+const TITLE_MAX_WAIT_MS = 8000;
+
+const stripGroupPrefix = (title, groupName) => {
+  if (!groupName) {
+    return title;
+  }
+  const prefix = `${groupName} - `;
+  if (title.startsWith(prefix)) {
+    return title.slice(prefix.length);
+  }
+  return title;
+}
+
+const getCurrentBaseTitle = () => {
+  return stripGroupPrefix(document.title, titleState.currentGroupName);
+}
+
+const clearPendingTitleUpdate = () => {
+  if (titleState.settleTimer) {
+    clearTimeout(titleState.settleTimer);
+    titleState.settleTimer = null;
+  }
+  if (titleState.maxWaitTimer) {
+    clearTimeout(titleState.maxWaitTimer);
+    titleState.maxWaitTimer = null;
+  }
+  if (titleState.observer) {
+    titleState.observer.disconnect();
+    titleState.observer = null;
+  }
+}
+
+const applyGroupedTitleNow = (groupName) => {
+  const baseTitle = stripGroupPrefix(getCurrentBaseTitle(), groupName);
+  titleState.currentGroupName = groupName;
+  titleState.isUpdating = true;
+  document.title = `${groupName} - ${baseTitle}`;
+  titleState.isUpdating = false;
+}
+
+const scheduleGroupedWindowTitle = (groupName) => {
+  clearPendingTitleUpdate();
+  titleState.pendingGroupName = groupName;
+  if (!groupName) {
+    const baseTitle = getCurrentBaseTitle();
+    titleState.currentGroupName = '';
+    titleState.isUpdating = true;
+    document.title = baseTitle;
+    titleState.isUpdating = false;
+    return;
+  }
+  const queueSettledApply = () => {
+    if (titleState.settleTimer) {
+      clearTimeout(titleState.settleTimer);
+    }
+    titleState.settleTimer = setTimeout(() => {
+      applyGroupedTitleNow(titleState.pendingGroupName);
+      clearPendingTitleUpdate();
+    }, TITLE_SETTLE_DELAY_MS);
+  };
+  const titleElement = document.querySelector('title');
+  if (titleElement) {
+    titleState.observer = new MutationObserver(() => {
+      if (titleState.isUpdating) {
+        return;
+      }
+      queueSettledApply();
+    });
+    titleState.observer.observe(titleElement, {childList: true});
+  }
+  queueSettledApply();
+  titleState.maxWaitTimer = setTimeout(() => {
+    applyGroupedTitleNow(titleState.pendingGroupName);
+    clearPendingTitleUpdate();
+  }, TITLE_MAX_WAIT_MS);
+}
+
+const applyGroupedWindowTitle = (groupName) => {
+  scheduleGroupedWindowTitle(groupName);
+}
+
 
 const removePreviousDivs = () => {
   const divs = document.getElementsByClassName('colordiv');
@@ -126,25 +217,30 @@ const updatePageWithPrefs = (matchedPrefs, defaultBorderWidth, defaultOpacity) =
 }
 
 const applyPreferences = () => {
-  chrome.storage.local.get(['prefs', 'snoozeUntil', 'active'], (data) => {
+  chrome.storage.local.get(['prefs', 'snoozeUntil', 'active', 'titlePrefixEnabled'], (data) => {
     if (data.active === false || !data.prefs) {
       logMessageIfEnabled("URLColors: Extension is not active.");
       removePreviousDivs();
+      applyGroupedWindowTitle('');
       return;
     }
     const now = Date.now();
     if (data.snoozeUntil && data.snoozeUntil > now) {
       logMessageIfEnabled("URLColors: Extension is snoozed.");
       removePreviousDivs();
+      applyGroupedWindowTitle('');
       return;
     }
     const matchedPrefs = getMatchedPrefs(data.prefs);
     if (matchedPrefs.length === 0) {
       logMessageIfEnabled(`URLColors: No match found for URL: ${window.location.href}.`, data.prefs);
         removePreviousDivs();
+        applyGroupedWindowTitle('');
         return;
     }
     logMessageIfEnabled(`URLColors: ${matchedPrefs.length} match(s) found for URL: ${window.location.href}. Updating page with border preferences.`, matchedPrefs);
+    const activePref = matchedPrefs[matchedPrefs.length - 1];
+    applyGroupedWindowTitle((data.titlePrefixEnabled === false) ? '' : (activePref.groupName || ''));
     updatePageWithPrefs(matchedPrefs, data?.prefs?.borderWidth, data?.prefs?.opacity);
   });
 }
